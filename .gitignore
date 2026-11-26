@@ -2,8 +2,9 @@
 node_modules/
 package-lock.json
 
-# Environment & database credentials
-koneksi/config.php
+# Environment & local credentials
+.env
+.env.local
 
 # SQL Database dumps (berisi hash kredensial pengguna)
 *.sql

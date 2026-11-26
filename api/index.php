@@ -1,31 +1,32 @@
 <?php
 // api/index.php - Router Tunggal untuk Vercel Serverless
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $file = ltrim($uri, '/');
 
-// Jika root, buka index.php
+// Set direktori kerja ke root project agar relative path & include berjalan normal
+chdir(__DIR__ . '/..');
+
+// Jika root, jalankan index.php
 if ($file === '' || $file === '/') {
-    require __DIR__ . '/../index.php';
+    require 'index.php';
     exit;
 }
 
-$target = __DIR__ . '/../' . $file;
-
-// Jika file PHP langsung ada, jalankan
-if (file_exists($target) && is_file($target)) {
-    require $target;
+// Cek target di root
+if (file_exists($file) && is_file($file)) {
+    require $file;
     exit;
 }
 
-// Jika merujuk ke folder (misal: /admin), cari index.php di dalamnya
-if (is_dir($target) && file_exists($target . '/index.php')) {
-    require $target . '/index.php';
+// Jika folder (misal: admin), jalankan admin/index.php
+if (is_dir($file) && file_exists($file . '/index.php')) {
+    require $file . '/index.php';
     exit;
 }
 
-// Fallback jika tidak ada ekstensi .php (misal: /hasil -> /hasil.php)
-if (file_exists($target . '.php')) {
-    require $target . '.php';
+// Fallback jika URL tanpa ekstensi .php (misal: /catat_viewer?jurusan=RPL)
+if (file_exists($file . '.php')) {
+    require $file . '.php';
     exit;
 }
 
