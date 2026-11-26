@@ -4,27 +4,53 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Baca kredensial dari Environment Variables (Vercel/Hosting Cloud), fallback ke localhost (XAMPP)
-$db_host = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? "localhost");
-$db_user = getenv('DB_USER') ?: ($_ENV['DB_USER'] ?? "root");
-$db_pass = getenv('DB_PASS') ?: ($_ENV['DB_PASS'] ?? "");
-$db_name = getenv('DB_NAME') ?: ($_ENV['DB_NAME'] ?? "db_univ");
-$db_port = intval(getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? 3306));
+// Fungsi pembantu untuk mengambil Environment Variable dari berbagai sumber PHP
+function getEnvVal($key, $default = '') {
+    $val = getenv($key);
+    if ($val !== false && $val !== '') {
+        return $val;
+    }
+    if (!empty($_ENV[$key])) {
+        return $_ENV[$key];
+    }
+    if (!empty($_SERVER[$key])) {
+        return $_SERVER[$key];
+    }
+    return $default;
+}
+
+// Ambil kredensial database (Default fallback ke TiDB Cloud jika di cloud, atau localhost jika di XAMPP)
+$is_vercel = !empty($_ENV['VERCEL']) || !empty($_SERVER['VERCEL']) || getenv('VERCEL');
+
+$default_host = $is_vercel ? "gateway01.ap-southeast-1.prod.aws.tidbcloud.com" : "localhost";
+$default_port = $is_vercel ? 4000 : 3306;
+$default_user = $is_vercel ? "3PNg9c8a8hPwUFs.root" : "root";
+$default_pass = $is_vercel ? "AdRG1WtXWoL5O2oq" : "";
+$default_name = "db_univ";
+
+$db_host = getEnvVal('DB_HOST', $default_host);
+$db_port = intval(getEnvVal('DB_PORT', $default_port));
+$db_user = getEnvVal('DB_USER', $default_user);
+$db_pass = getEnvVal('DB_PASS', $default_pass);
+$db_name = getEnvVal('DB_NAME', $default_name);
+
+// Nonaktifkan mysqli reporting exception agar koneksi error bisa ditangani dengan pesan ramah
+mysqli_report(MYSQLI_REPORT_OFF);
 
 // Inisialisasi koneksi MySQLi
 $conn = mysqli_init();
 
-// Jika menggunakan SSL di cloud (opsional sesuai provider cloud)
-$ssl_ca = getenv('DB_SSL_CA') ?: ($_ENV['DB_SSL_CA'] ?? null);
-if ($ssl_ca) {
-    mysqli_ssl_set($conn, NULL, NULL, $ssl_ca, NULL, NULL);
+// TiDB Cloud mewajibkan koneksi terenkripsi (SSL)
+if ($db_port === 4000 || strpos($db_host, 'tidbcloud.com') !== false) {
+    // Flag SSL bawaan tanpa perlu file sertifikat lokal
+    $conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
+    $connected = @$conn->real_connect($db_host, $db_user, $db_pass, $db_name, $db_port, NULL, MYSQLI_CLIENT_SSL);
+} else {
+    $connected = @$conn->real_connect($db_host, $db_user, $db_pass, $db_name, $db_port);
 }
 
-// Buka koneksi dengan opsi port
-$connected = @mysqli_real_connect($conn, $db_host, $db_user, $db_pass, $db_name, $db_port);
-
 if (!$connected) {
-    die("Koneksi Database Gagal: " . mysqli_connect_error() . "<br><small>Pastikan Environment Variables database sudah dikonfigurasi dengan benar di Vercel.</small>");
+    die("Koneksi Database Gagal: (" . $conn->connect_errno . ") " . $conn->connect_error . "<br><small>Pastikan koneksi database cloud sudah aktif.</small>");
 }
 
 $conn->set_charset("utf8mb4");
