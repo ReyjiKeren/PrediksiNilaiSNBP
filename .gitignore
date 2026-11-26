@@ -1,0 +1,28 @@
+# Dependency directories
+node_modules/
+package-lock.json
+
+# Environment & database credentials
+koneksi/config.php
+
+# SQL Database dumps (berisi hash kredensial pengguna)
+*.sql
+*.sql.gz
+
+# Uploads & temporary files
+uploads/*
+!uploads/.gitkeep
+uploads/profile/*
+!uploads/profile/.gitkeep
+
+# Scraper environment / local cache
+__pycache__/
+*.pyc
+scraper/__pycache__/
+
+# Editor & OS files
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
